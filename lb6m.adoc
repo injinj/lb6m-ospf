@@ -221,7 +221,7 @@ needed.
 --------------------------------------
 (LB6M) (Config)#router ospf
 (LB6M) (Config-router)#router-id 10.3.2.68
-(LB6M) (Config-router)#network 10.1.10.0 255.255.255.127 area 0.0.0.0
+(LB6M) (Config-router)#network 10.1.10.0 255.255.255.128 area 0.0.0.0
 (LB6M) (Config-router)#redistribute connected
 (LB6M) (Config-router)#redistribute static
 (LB6M) (Config-router)#exit
