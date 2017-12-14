@@ -67,6 +67,7 @@ telnet works, ssh is secure and ubiquitous.
 
 * Set the prompt.  FASTPATH Routing hurts my eyes.
 --------------------------------------
+(FASTPATH Routing) >enable
 (FASTPATH Routing) #set prompt LB6M
 --------------------------------------
 
@@ -81,6 +82,8 @@ Password Changed!
 
 * Generate the 'ssh' keys for the switch.
 --------------------------------------
+(LB6M) >enable
+(LB6M) #configure
 (LB6M) (Config)#crypto key generate rsa
 (LB6M) (Config)#crypto key generate dsa
 --------------------------------------
@@ -89,6 +92,7 @@ Password Changed!
 for connecting, for example *ssh admin@192.168.1.1*, using the password set
 above.
 --------------------------------------
+(LB6M) >enable
 (LB6M) #sshcon timeout 160
 (LB6M) #ip ssh protocol 2
 (LB6M) #ip ssh server enable
@@ -98,12 +102,15 @@ above.
 * Enable the client time synchronization, presuming that dhcpd hands out
 a DNS resolver and a route to the NTP server.
 --------------------------------------
+(LB6M) >enable
+(LB6M) #configure
 (LB6M) (Config)#sntp server 3.north-america.pool.ntp.org
 (LB6M) (Config)#sntp client mode unicast 
 --------------------------------------
 
 * Save the config to startup_config and reboot.
 --------------------------------------
+(LB6M) >enable
 (LB6M) #write mem
 (LB6M) #reload
 --------------------------------------
