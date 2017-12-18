@@ -34,9 +34,10 @@ Additional Packages............................ FASTPATH QOS
 
 There are 24 SFP+ ports on the Quanta LB6M as well as a two copper Gigabit
 ports and two management ports.  The FASTPATH software on the LB6M also
-supports OSPF, which distribute Layer 3 routes dynamically as devices are added
-and subtracted from the network.  In this article I will show how OSPF can be
-used for container style networking.
+supports https://en.wikipedia.org/wiki/Open_Shortest_Path_First[OSPF], which
+distribute Layer 3 routes dynamically as devices are added and subtracted from
+the network.  In this article I will show how OSPF can be used for container
+style networking.
 
 My primary use case for using OSPF is to allow containers to connect to other
 containers through virtual bridges defined on each host.  Each virtual bridge
@@ -259,11 +260,11 @@ password zebra
 !enable password please-set-at-here
 !
 interface te1
-  ip ospf area 0
 !
 router ospf
   ospf router-id 10.3.2.120
   network 10.10.120.0/24 area 0
+  network 10.1.10.0/30 area 0
 !
 log file /var/log/quagga/ospf.log
 
@@ -301,6 +302,147 @@ C      10.1.10.16/30 [0/1] directly connected,   0/5
 O      10.10.91.0/24 [110/11] via 10.1.10.18,   02h:31m:30s,  0/5
 O      10.10.120.0/24 [110/11] via 10.1.10.2,   02h:32m:50s,  0/1
 --------------------------------------
+
+Equal Cost MultiPath (ECMP)
+---------------------------
+
+OSPF does allow multiple paths for the same destination to be used by both the
+Linux kernel and the LB6M switch.  This config is similar to LAG in that flows
+are balanced across and aggregate of physical links.  The term used for a LAG
+at Layer 3 is
+https://en.wikipedia.org/wiki/Equal-cost_multi-path_routing[ECMP].  One of the
+better in-depth explanations for the ideas behind ECMP are the docs for Cumulus
+https://docs.cumulusnetworks.com/display/ROH/Routing+on+the+Host[Routing on the
+Host].
+
+Configuration of MultiPath links is relatively easy, simply define multiple
+interfaces and multiple networks within the ospfd.conf config file.
+
+--------------------------------------
+host4# cat /etc/quagga/ospfd.conf
+!
+hostname host4
+password zebra
+!enable password please-set-at-here
+!
+interface te2
+!
+interface te3
+!
+interface te4
+!
+interface te5
+!
+router ospf
+  ospf router-id 10.3.2.121
+  network 10.10.121.0/24 area 0
+  network 10.1.10.32/30 area 0
+  network 10.1.10.36/30 area 0
+  network 10.1.10.40/30 area 0
+  network 10.1.10.44/30 area 0
+!
+log file /var/log/quagga/ospf.log
+--------------------------------------
+
+The routing table for the above configuration will appear within the LB6M as
+multiple paths to the same destination.  The above network 10.10.121.0/24
+is a bridge that exists on the host, there are four interfaces defined
+that can forward traffic to this destination.
+
+--------------------------------------
+(LB6M) #show ip route 
+
+Route Codes: R - RIP Derived, O - OSPF Derived, C - Connected, S - Static
+       B - BGP Derived, IA - OSPF Inter Area
+       E1 - OSPF External Type 1, E2 - OSPF External Type 2
+       N1 - OSPF NSSA External Type 1, N2 - OSPF NSSA External Type 2
+
+C      10.1.10.0/30 [0/1] directly connected,   0/1
+C      10.1.10.4/30 [0/1] directly connected,   0/2
+C      10.1.10.24/30 [0/1] directly connected,   0/7
+C      10.1.10.28/30 [0/1] directly connected,   0/8
+C      10.1.10.32/30 [0/1] directly connected,   0/9
+C      10.1.10.36/30 [0/1] directly connected,   0/10
+C      10.1.10.40/30 [0/1] directly connected,   0/11
+C      10.1.10.44/30 [0/1] directly connected,   0/12
+C      10.1.10.48/30 [0/1] directly connected,   0/13
+C      10.1.10.52/30 [0/1] directly connected,   0/14
+O      10.10.37.0/24 [110/11] via 10.1.10.50,   02h:22m:55s,  0/13
+                              via 10.1.10.54,   02h:22m:55s,  0/14
+O      10.10.74.0/24 [110/11] via 10.1.10.26,   02h:22m:08s,  0/7
+                              via 10.1.10.30,   02h:22m:08s,  0/8
+O      10.10.120.0/24 [110/11] via 10.1.10.2,   05h:14m:43s,  0/1
+                               via 10.1.10.6,   05h:14m:43s,  0/2
+O      10.10.121.0/24 [110/11] via 10.1.10.34,   05h:10m:18s,  0/9
+                               via 10.1.10.38,   05h:10m:18s,  0/10
+                               via 10.1.10.42,   05h:10m:18s,  0/11
+                               via 10.1.10.46,   05h:10m:18s,  0/12
+--------------------------------------
+
+For each routing decision from the source to the destination, if there are
+multiple paths, then the routing kernel must choose a destination such that
+the same TCP stream uses the same route.  The default behavior of a newer
+kernel is to hash the source and destination fields of the IP address.
+This causes connections between the same hosts to always use the same route,
+but connections between different hosts may use a different route.
+
+The Linux kernel 'sysctl' which controls this behavior is
+https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt[fib_multipath_hash_policy].
+
+[quote, 'sysctl net.ipv4.fib_multipath_hash_policy']
+--------------------------------------
+fib_multipath_hash_policy - INTEGER
+	Controls which hash policy to use for multipath routes. Only valid
+	for kernels built with CONFIG_IP_ROUTE_MULTIPATH enabled.
+	Default: 0 (Layer 3)
+	Possible values:
+	0 - Layer 3
+	1 - Layer 4
+--------------------------------------
+
+If this default is changed to Layer 4, then the ports used for the connection
+will be used to hash the route.  The LB6M behaves like a Layer 4 multipath
+device, and I don't believe this can be changed.
+
+This is what occurs when I use 3 'iperf' instances on different hosts
+connecting to the host above with 4x10gbe interfaces.
+
+--------------------------------------
+host4$ iperf -s
+
+Server listening on TCP port 5001
+TCP window size: 2.00 MByte (default)
+
+[  4] local 10.10.121.1 port 5001 connected with 10.1.10.54 port 39972
+[  5] local 10.10.121.1 port 5001 connected with 10.1.10.30 port 48182
+[  6] local 10.10.121.1 port 5001 connected with 10.1.10.6 port 58242
+[ ID] Interval       Transfer     Bandwidth
+[  4]  0.0-10.0 sec  11.0 GBytes  9.46 Gbits/sec
+[  5]  0.0-10.0 sec  11.0 GBytes  9.46 Gbits/sec
+[  6]  0.0-10.0 sec  11.1 GBytes  9.49 Gbits/sec
+[  4] local 10.10.121.1 port 5001 connected with 10.1.10.54 port 39974
+[  5] local 10.10.121.1 port 5001 connected with 10.1.10.30 port 48184
+[  6] local 10.10.121.1 port 5001 connected with 10.1.10.6 port 58246
+[  4]  0.0-10.0 sec  10.4 GBytes  8.89 Gbits/sec
+[  5]  0.0-10.0 sec  11.0 GBytes  9.43 Gbits/sec
+[  6]  0.0-18.9 sec  33.0 MBytes  14.6 Mbits/sec
+[  4] local 10.10.121.1 port 5001 connected with 10.1.10.6 port 58248
+[  5] local 10.10.121.1 port 5001 connected with 10.1.10.30 port 48186
+[  6] local 10.10.121.1 port 5001 connected with 10.1.10.54 port 39976
+[  5]  0.0-10.1 sec  3.34 GBytes  2.85 Gbits/sec
+[  6]  0.0-10.0 sec  3.57 GBytes  3.06 Gbits/sec
+[  4]  0.0-15.3 sec   720 MBytes   396 Mbits/sec
+[  4] local 10.10.121.1 port 5001 connected with 10.1.10.54 port 39978
+[  5] local 10.10.121.1 port 5001 connected with 10.1.10.30 port 48188
+[  6] local 10.10.121.1 port 5001 connected with 10.1.10.6 port 58256
+[  4]  0.0-10.0 sec  11.1 GBytes  9.49 Gbits/sec
+[  5]  0.0-10.0 sec  11.0 GBytes  9.43 Gbits/sec
+[  6]  0.0-10.0 sec  11.1 GBytes  9.49 Gbits/sec
+--------------------------------------
+
+In the first and the last runs, 3 interfaces were used, in another instance, 2
+interfaces were used, and the last instance only one interface was used.  The
+routing decisions were entirely due to forwarding on the LB6M.
 
 Documentation
 -------------
