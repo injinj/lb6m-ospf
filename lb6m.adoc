@@ -318,9 +318,31 @@ http://codecave.cc/multipath-routing-in-linux-part-1.html[Multipath Routing in
 Linux].
 
 Configuration of MultiPath links is relatively easy, simply define multiple
-interfaces and multiple networks within the ospfd.conf config file.
+interfaces and multiple networks within the *zebra.conf* and *ospfd.conf*
+config files.
 
 --------------------------------------
+host4# cat /etc/quagga/zebra.conf
+hostname host4
+log file /var/log/quagga/quagga.log
+!
+interface te4
+ ip address 10.1.10.34/30
+!
+interface te5
+ ip address 10.1.10.38/30
+!
+interface te2
+ ip address 10.1.10.42/30
+!
+interface te3
+ ip address 10.1.10.46/30
+!
+ip forwarding
+!
+!
+line vty
+!
 host4# cat /etc/quagga/ospfd.conf
 !
 hostname host4
