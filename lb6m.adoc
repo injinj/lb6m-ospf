@@ -313,7 +313,9 @@ at Layer 3 is
 https://en.wikipedia.org/wiki/Equal-cost_multi-path_routing[ECMP].  One of the
 better in-depth explanations for the ideas behind ECMP are the docs for Cumulus
 https://docs.cumulusnetworks.com/display/ROH/Routing+on+the+Host[Routing on the
-Host].
+Host] and the fascinating history of
+http://codecave.cc/multipath-routing-in-linux-part-1.html[Multipath Routing in
+Linux].
 
 Configuration of MultiPath links is relatively easy, simply define multiple
 interfaces and multiple networks within the ospfd.conf config file.
