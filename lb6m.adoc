@@ -5,12 +5,30 @@ Quanta LB6M
 Introduction
 ------------
 
+This Quanta LB6M is everywhere, yet you won't find it on Quanta's website.
+That's because it's not sold to end users, it's an early hyperscaler switch
+based on the
+https://www.broadcom.com/products/ethernet-connectivity/switching/strataxgs/bcm56820-series[Scorpion
+chipset].  It's the first 10 GBit/s merchant silicon chipset used by Google and
+probably others in the development of their large scale networks, most famously
+illustrated by the https://www.wired.com/2012/09/pluto-switch/[Pluto Switch].
+The history of the Google network is a
+http://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf[Must Read].
+
 According to Metcalfe's law, the value of the network is proportional to the
 square of the number of connected users.  With squared values in mind, check
-out this config with several 10 GBit/s *Intel X520-DA2* & *Mellanox ConnectX-2
-MNPH29C-XTR* NICs, and a *Quanta LB6M*, which is inexpensive 10 GBit/s switch
-which came new from *UNIXSurplus*.  The cabling I use is a 3m Active Optical
-Cable, the *AVAGO AFBR-2CAR03Z*.
+out this config with several 10 GBit/s
+https://ark.intel.com/products/39776/Intel-Ethernet-Converged-Network-Adapter-X520-DA2[Intel
+X520-DA2] & Mellanox ConnectX-2
+https://www.cnet.com/products/mellanox-connectx-2-en-mnph29c-xtr-network-adapter-2-ports/specs/[MNPH29C-XTR]
+NICs, and the
+https://www.reddit.com/r/homelab/comments/615tsy/finally_10gbe_inside_the_quanta_lb6m/[Quanta
+LB6M], which came new from https://www.unixplus.com/[UNIXPlus].  The cabling I
+use is a 3m Active Optical Cable, the
+https://www.fs.com/products/36728.html[AVAGO AFBR-2CAR03Z].
+
+The Switch
+----------
 
 Here's the version information of this switch derived from the command
 'show version'.
